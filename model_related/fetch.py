@@ -1,8 +1,11 @@
 import requests
 import json
+from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
 URL = "https://models.dev/api.json"
 FIRST_PARTY = ["anthropic", "openai", "google", "mistral", "deepseek", "xai"]
+
 
 def download(url:str) -> dict:
     resp = requests.get(url, timeout=30)
@@ -45,9 +48,22 @@ def flatten(provider: str, model_details: dict) -> dict | None:
 
 
 if __name__ == "__main__":
+
+    list_valid_models = []
     model_catalog = download(URL)
-    print(len(model_catalog), type(model_catalog))
 
     for provider in FIRST_PARTY:
         provider_models = model_catalog.get(provider, {}).get('models', {})
-        print(provider, len(provider_models))
+
+        total_models = len(provider_models)
+        valid_models = 0
+        for model, model_details in provider_models.items():
+            model_details_flattened = flatten(provider, model_details)
+            if model_details_flattened is not None:
+                valid_models += 1
+                list_valid_models.append(model_details_flattened)
+
+    write_path = ROOT / "model_catalog.json"
+    print(f"Count of valid models: {len(list_valid_models)}")
+    with open(write_path, "w") as f:
+        json.dump(list_valid_models, f, indent=2)
