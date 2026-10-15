@@ -13,6 +13,18 @@ def download(url:str) -> dict:
     return resp.json()
 
 
+def get_model_type(model_details: dict) -> str:
+    if "embed" in model_details['id'].lower():
+        # The embedding check comes first on purpose. Embedding models list their output as text
+        # and checking the id first stops them being tagged chat
+        return "embedding"
+
+    if model_details['modalities']['output'] == ["text"]:
+        return "chat"
+
+    return "other"
+
+
 def flatten(provider: str, model_details: dict) -> dict | None:
     if "cost" not in model_details:
         return None
@@ -27,7 +39,8 @@ def flatten(provider: str, model_details: dict) -> dict | None:
     model_details_flattened['provider'] = provider
     model_details_flattened['id'] = model_details['id']
     model_details_flattened['name'] = model_details['name']
-    
+    model_details_flattened['model_type'] = get_model_type(model_details)
+
     model_details_flattened['price_in'] = model_details['cost']['input']
     model_details_flattened['price_out'] = model_details['cost']['output']
 
