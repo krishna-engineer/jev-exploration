@@ -4,7 +4,7 @@ Why we chose what we chose, and what we deferred. `ROADMAP.md` holds the plan; t
 
 ## Price ranking uses `price_in + price_out` (2026-10-07)
 
-**Decision:** V1 ranks models by the plain sum of input and output price per 1M tokens. The weights live as constants (`PRICE_IN_WEIGHT`, `PRICE_OUT_WEIGHT`, both 1) at the top of `model_related/filter_n_rank.py`, so changing them is a one-line edit.
+**Decision:** V1 ranks models by the plain sum of input and output price per 1M tokens. The weights live as constants (`PRICE_IN_WEIGHT`, `PRICE_OUT_WEIGHT`, both 1) at the top of `recommender/rank.py`, so changing them is a one-line edit.
 
 **Rejected:** a weighted blend such as `price_in * 3 + price_out` as the default. The 3 stands in for "tasks send about 3x more input than they generate", which is a guess that varies a lot by task (summarization is far more input-heavy than long-form writing). The plain sum also assumes a ratio (1:1), but it is easier to explain and adds no hidden policy. A separate config file was also rejected as more machinery than two numbers need.
 

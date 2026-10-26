@@ -11,3 +11,5 @@ wheels/
 
 .env
 ROADMAP.md
+
+.claude/settings.local.json
