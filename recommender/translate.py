@@ -31,11 +31,29 @@ def level_probabilities(answer: dict) -> dict[int, float]:
 
 
 def probability_at_least(probabilities: dict[int, float], level: int) -> float:
+    """
+    This function gives Probability that the answer is `level` or higher.
+
+    The levels are either/or (meaning a judge picks exactly one), so their probabilities add: P(level >= 2) = P(2) + P(3).
+
+    We use this for yes/no decisions ("does this need a reasoning model?")
+    """
     return sum(p for lvl, p in probabilities.items() if lvl >= level)
 
 
 def median_level(probabilities: dict[int, float]) -> int:
-    # Lowest level where the cumulative probability reaches 0.5
+    """
+    TLDR: at the median level, at least half the judges asked for that much context or more.
+
+    Picks one level for a size-type question (context_size) by majority: more than half the
+    judges asked for this level or higher. It is always a level the judges actually voted for,
+    unlike the score (an average), which can land between levels.
+
+    It is a minimum, not a safe margin: up to half the judges may have wanted more. Since
+    rank_models sorts by price, the top result tends to sit near the bottom of the allowed
+    range, so a split like {2: 0.5, 3: 0.5} can recommend a model that is too small for half
+    the judges. To lean safer, use a cutoff below 0.5 (e.g. 0.3) so the bigger level wins.
+    """
     cumulative = 0.0
     for level in sorted(probabilities):
         cumulative += probabilities[level]
@@ -44,145 +62,101 @@ def median_level(probabilities: dict[int, float]) -> int:
     return max(probabilities)
 
 
-def judgments_to_requirement(answers: dict) -> dict:
-    # answers has the shape of response.model_dump()["answers"].
-    # A question missing from answers leaves its field out of the requirement.
+def judgments_to_requirement(judgments: dict) -> dict:
+    # judgments maps question name -> Jev answer, e.g. {"needs_vision": {"type": "noul", "noul": 0.9}}.
+    # A question missing from judgments leaves its field out of the requirement.
     requirement = {}
 
     for question, field in NOUL_RULES.items():
-        if question in answers:
-            requirement[field] = answers[question]["noul"] >= YES_THRESHOLD
+        if question in judgments:
+            requirement[field] = judgments[question]["noul"] >= YES_THRESHOLD
 
-    if "needs_long_output" in answers and answers["needs_long_output"]["noul"] >= YES_THRESHOLD:
+    if "needs_long_output" in judgments and judgments["needs_long_output"]["noul"] >= YES_THRESHOLD:
         requirement["min_output"] = LONG_OUTPUT_MIN_TOKENS
 
-    if "reasoning_difficulty" in answers:
-        probabilities = level_probabilities(answers["reasoning_difficulty"])
-        requirement["needs_reasoning"] = probability_at_least(probabilities, REASONING_LEVEL) >= REASONING_PROBABILITY
+    if "reasoning_difficulty" in judgments:
+        probabilities = level_probabilities(judgments["reasoning_difficulty"])
+        probs_of_level = probability_at_least(probabilities, REASONING_LEVEL)
+        requirement["needs_reasoning"] = probs_of_level >= REASONING_PROBABILITY
 
-    if "context_size" in answers:
-        level = median_level(level_probabilities(answers["context_size"]))
+    if "context_size" in judgments:
+        level = median_level(level_probabilities(judgments["context_size"]))
         min_context = CONTEXT_LEVEL_TO_MIN_CONTEXT[level]
         if min_context:
             requirement["min_context"] = min_context
 
     return requirement
 
+
 if __name__ == "__main__":
-    jev_resp = {
-    'reasoning_difficulty':
-    {
-        'type': 'score',
-        'score': 0.7,
-        'confidence': 0.7,
-        'legend':
-        {
-            0: 'Simple lookup, rewrite or formatting; no multi-step thinking.',
-            1: 'Straightforward task with a few steps, such as summarizing or routine classification.',
-            2: 'Careful multi-step analysis, such as comparing options or debugging a non-trivial problem.',
-            3: 'Hard reasoning, such as math proofs, complex algorithms or planning under many constraints.'
+    sample_judgments = {
+        "reasoning_difficulty": {
+            "type": "score",
+            "score": 0.7,
+            "confidence": 0.7,
+            "legend": {
+                0: "Simple lookup, rewrite or formatting; no multi-step thinking.",
+                1: "Straightforward task with a few steps, such as summarizing or routine classification.",
+                2: "Careful multi-step analysis, such as comparing options or debugging a non-trivial problem.",
+                3: "Hard reasoning, such as math proofs, complex algorithms or planning under many constraints.",
+            },
+            "probabilities": {0: 0.3, 1: 0.7, 2: 0.0, 3: 0.0},
         },
-        'probabilities':
-        {
-            0: 0.3,
-            1: 0.7,
-            2: 0.0,
-            3: 0.0
-        }
-    },
-    'context_size':
-    {
-        'type': 'score',
-        'score': 0.0,
-        'confidence': 1.0,
-        'legend':
-        {
-            0: 'A short message or a few sentences.',
-            1: 'A few pages, such as an email thread or a short article.',
-            2: 'A long document, such as a report or a book chapter.',
-            3: 'A book-length text or a large codebase.',
-            4: 'Several books or an entire document archive.'
+        "context_size": {
+            "type": "score",
+            "score": 0.0,
+            "confidence": 1.0,
+            "legend": {
+                0: "A short message or a few sentences.",
+                1: "A few pages, such as an email thread or a short article.",
+                2: "A long document, such as a report or a book chapter.",
+                3: "A book-length text or a large codebase.",
+                4: "Several books or an entire document archive.",
+            },
+            "probabilities": {0: 1.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0},
         },
-        'probabilities':
-        {
-            0: 1.0,
-            1: 0.0,
-            2: 0.0,
-            3: 0.0,
-            4: 0.0
-        }
-    },
-    'needs_vision':
-    {
-        'type': 'noul',
-        'noul': 0.02
-    },
-    'needs_tool_use':
-    {
-        'type': 'noul',
-        'noul': 0.16
-    },
-    'needs_long_output':
-    {
-        'type': 'noul',
-        'noul': 0.03
-    },
-    'latency_sensitivity':
-    {
-        'type': 'score',
-        'score': 0.72,
-        'confidence': 0.55,
-        'legend':
-        {
-            0: 'No time pressure; a batch or background job.',
-            1: 'A person waits for the answer, but a few seconds is fine.',
-            2: 'Real-time interaction where delays are noticeable, such as live chat or voice.'
+        "needs_vision": {"type": "noul", "noul": 0.02},
+        "needs_tool_use": {"type": "noul", "noul": 0.16},
+        "needs_long_output": {"type": "noul", "noul": 0.03},
+        "latency_sensitivity": {
+            "type": "score",
+            "score": 0.72,
+            "confidence": 0.55,
+            "legend": {
+                0: "No time pressure; a batch or background job.",
+                1: "A person waits for the answer, but a few seconds is fine.",
+                2: "Real-time interaction where delays are noticeable, such as live chat or voice.",
+            },
+            "probabilities": {0: 0.29, 1: 0.7, 2: 0.01},
         },
-        'probabilities':
-        {
-            0: 0.29,
-            1: 0.7,
-            2: 0.01
-        }
-    },
-    'cost_sensitivity':
-    {
-        'type': 'score',
-        'score': 0.03,
-        'confidence': 0.97,
-        'legend':
-        {
-            0: 'Cost is not a concern; answer quality is what matters.',
-            1: 'Cost matters somewhat, within a normal budget.',
-            2: 'Very cost-sensitive: high volume, or an explicit wish to keep it cheap.'
+        "cost_sensitivity": {
+            "type": "score",
+            "score": 0.03,
+            "confidence": 0.97,
+            "legend": {
+                0: "Cost is not a concern; answer quality is what matters.",
+                1: "Cost matters somewhat, within a normal budget.",
+                2: "Very cost-sensitive: high volume, or an explicit wish to keep it cheap.",
+            },
+            "probabilities": {0: 0.98, 1: 0.02, 2: 0.0},
         },
-        'probabilities':
-        {
-            0: 0.98,
-            1: 0.02,
-            2: 0.0
-        }
-    },
-    'is_coding':
-    {
-        'type': 'noul',
-        'noul': 0.98
-    },
-    'task_type':
-    {
-        'type': 'choice',
-        'choice': 'coding',
-        'confidence': 1.0,
-        'probabilities':
-        {
-            'coding': 1.0,
-            'summarization': 0.0,
-            'extraction_classification': 0.0,
-            'writing': 0.0,
-            'analysis_reasoning': 0.0,
-            'conversation_qa': 0.0,
-            'agent_workflow': 0.0,
-            'other': 0.0
-        }
+        "is_coding": {"type": "noul", "noul": 0.98},
+        "task_type": {
+            "type": "choice",
+            "choice": "coding",
+            "confidence": 1.0,
+            "probabilities": {
+                "coding": 1.0,
+                "summarization": 0.0,
+                "extraction_classification": 0.0,
+                "writing": 0.0,
+                "analysis_reasoning": 0.0,
+                "conversation_qa": 0.0,
+                "agent_workflow": 0.0,
+                "other": 0.0,
+            },
+        },
     }
-}
+
+    requirement = judgments_to_requirement(sample_judgments)
+    print(requirement)

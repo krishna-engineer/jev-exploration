@@ -10,3 +10,12 @@ dependencies = [
     "requests>=2.34.2",
     "typesafe-sdk>=0.7.1",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.3",
+]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["*.ipynb"]
