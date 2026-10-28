@@ -10,11 +10,13 @@ BOOLEAN_RULES = {
     "structured_output": "structured_output",
     "needs_reasoning": "reasoning",
 }
+
 # A minimum rule keeps models where the field is >= the requirement value.
 MIN_RULES = {
     "min_context": "context",
     "min_output": "max_output",
 }
+
 # A maximum rule keeps models where the field is <= the requirement value (price caps, $ per 1M tokens).
 MAX_RULES = {
     "max_price_in": "price_in",

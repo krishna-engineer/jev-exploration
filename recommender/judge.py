@@ -80,19 +80,7 @@ def judge_task(task: str):
     api_key = os.environ["typesafe_api_key"]  # SDK default name is uppercase, so pass this one explicitly
 
     with TypeSafeClient(api_key=api_key, model=JEV_MODEL) as client:
-        return client.system_one(state={"task": task}, questions=QUESTIONS)
-
-
-def short_view(response) -> str:
-    # One line per task: noul values, and for score/choice the top option with its probability
-    parts = []
-    for name, a in response.model_dump()["answers"].items():
-        if a["type"] == "noul":
-            parts.append(f"{name}={a['noul']:.2f}")
-        else:
-            top, p = max(a["probabilities"].items(), key=lambda kv: kv[1])
-            parts.append(f"{name}={top}({p:.2f})")
-    return "\n    ".join(parts)
+        return client.system_one(state={"task": task}, questions=QUESTIONS).model_dump().get("answers", {})
 
 
 if __name__ == "__main__":
@@ -108,5 +96,6 @@ if __name__ == "__main__":
     ]
     for task in tasks:
         print(task)
-        print("    " + short_view(judge_task(task)))
-        print()
+        print(type(judge_task(task)))
+        print(judge_task(task))
+        break

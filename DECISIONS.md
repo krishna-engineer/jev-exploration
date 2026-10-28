@@ -67,3 +67,11 @@ Why we chose what we chose, and what we deferred. `ROADMAP.md` holds the plan; t
 **Why:** tiers would be subjective, and many models do near-equal work.
 
 **Deferred:** an objective quality signal from a public benchmark leaderboard, weighted alongside price.
+
+## Query rewriting is deferred; reword the Jev questions for now (2026-10-28)
+
+**Decision:** V1 fixes misjudged answers by rewording the individual Jev questions. Rewriting the task text before it reaches Jev is deferred.
+
+**Why:** in the first test run, scale confused the judgments. "Classify 2 million tickets" got a huge `context_size` and a raised `reasoning_difficulty`, because Jev judged the whole job and not one request. Rewording (for example "in a single request") is the smallest fix. It is a patch per question, though.
+
+**Deferred:** a query-rewriting step that turns the raw task into a normalized description before judging (for example, restating a batch job as one item plus a volume note). It is the more general fix, because the same ambiguity can recur in any question.
