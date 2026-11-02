@@ -13,3 +13,6 @@ wheels/
 ROADMAP.md
 
 .claude/settings.local.json
+
+# Call logs
+logs/

@@ -76,11 +76,17 @@ QUESTIONS = {
 }
 
 
-def judge_task(task: str):
+def judge_task(task: str) -> tuple[dict, dict]:
+    # Returns (answers, meta): answers feed the translate step, meta (model version, token usage) is kept for logging
     api_key = os.environ["typesafe_api_key"]  # SDK default name is uppercase, so pass this one explicitly
 
     with TypeSafeClient(api_key=api_key, model=JEV_MODEL) as client:
-        return client.system_one(state={"task": task}, questions=QUESTIONS).model_dump().get("answers", {})
+        response = client.system_one(state={"task": task}, questions=QUESTIONS).model_dump()
+
+    answers = response.get("answers", {})
+    meta = {"model": response.get("model"), "usage": response.get("usage")}
+
+    return answers, meta
 
 
 if __name__ == "__main__":
@@ -96,6 +102,5 @@ if __name__ == "__main__":
     ]
     for task in tasks:
         print(task)
-        print(type(judge_task(task)))
         print(judge_task(task))
         break

@@ -75,3 +75,23 @@ Why we chose what we chose, and what we deferred. `ROADMAP.md` holds the plan; t
 **Why:** in the first test run, scale confused the judgments. "Classify 2 million tickets" got a huge `context_size` and a raised `reasoning_difficulty`, because Jev judged the whole job and not one request. Rewording (for example "in a single request") is the smallest fix. It is a patch per question, though.
 
 **Deferred:** a query-rewriting step that turns the raw task into a normalized description before judging (for example, restating a batch job as one item plus a volume note). It is the more general fix, because the same ambiguity can recur in any question.
+
+## `judge_task` returns the answers and the metadata (2026-11-02)
+
+**Decision:** `judge_task` returns `(answers, meta)`. `answers` is the plain dict of judgments, and `meta` holds the model version and token usage.
+
+**Why:** the translate step should receive only the judgments, not Jev's response envelope, so a change in the SDK's metadata can't break it and tests can pass a hand-made dict. The metadata is still needed for logging and cost tracking, so it travels separately and is not thrown away.
+
+## Judge metadata stays internal (2026-11-02)
+
+**Decision:** the judge's metadata (model version, token usage) is written to the call log and is never returned to clients. In the log it is named `judge_meta`, not `jev_meta`.
+
+**Why:** clients asked which model to use for a task. They have no use for which model judged it. Returning it would tie the public contract to an implementation detail, and the judge may change (a different model, several models, or plain rules). The generic log name means a log reader doesn't change either.
+
+## `requirement` stays in the pipeline result but not in the API response (2026-11-02)
+
+**Decision:** `recommend_for_task` returns `requirement` next to `recommendation`, `reason` and `ranked`. The FastAPI response model will leave `requirement` out.
+
+**Why:** the pipeline result is useful for scripts, tests and logs. The API is a public contract. By Hyrum's Law, any field clients can observe gets depended on, and the field names (`needs_reasoning`, `min_context`, `tool_call`) mirror our internal catalog and judging logic. Adding a field later is a safe change and removing one breaks clients, so the API starts minimal and the `reason` text carries the explanation.
+
+**Revisit:** if clients need to see why the pool was narrowed, expose a trimmed summary of the requirement as an additive change.
