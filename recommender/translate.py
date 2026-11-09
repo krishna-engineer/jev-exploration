@@ -62,7 +62,7 @@ def median_level(probabilities: dict[int, float]) -> int:
     return max(probabilities)
 
 
-def judgments_to_requirement(judgments: dict) -> dict:
+def judgements_to_requirement(judgments: dict) -> dict:
     # judgments maps question name -> Jev answer, e.g. {"needs_vision": {"type": "noul", "noul": 0.9}}.
     # A question missing from judgments leaves its field out of the requirement.
     requirement = {}
@@ -158,5 +158,5 @@ if __name__ == "__main__":
         },
     }
 
-    requirement = judgments_to_requirement(sample_judgments)
+    requirement = judgements_to_requirement(sample_judgments)
     print(requirement)

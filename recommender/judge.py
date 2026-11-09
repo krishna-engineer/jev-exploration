@@ -11,15 +11,14 @@ JEV_MODEL = os.getenv("JEV_MODEL", "jev-latest")
 # Score levels are situations, not degrees, and are ordered low to high.
 QUESTIONS = {
     # Used to build the requirement dict
-    
     "is_valid_task": Noul(
         instructions="The text describes a task that a user wants an AI model to perform.",
         criteria=NoulCriteria(
-            true="A concrete task which can be performed by AI model, like summarizing a doc, classifying" \
-                "text or code writing, etc.",
+            true="A concrete task which can be performed by AI model, like summarizing a doc, classifying"
+            "text or code writing, etc.",
             # false="A greeting, small talk, unrelated questions, etc."
-            false="A greeting, small talk, unrelated questions, a general-knowledge question for the assistant to answer, etc."
-        )
+            false="A greeting, small talk, unrelated questions, a general-knowledge question for the assistant to answer, etc.",
+        ),
     ),
     "reasoning_difficulty": Score(
         instructions="How hard is the thinking the task requires?",
@@ -49,7 +48,6 @@ QUESTIONS = {
     "needs_long_output": Noul(
         instructions="The task requires a very long response, such as a full report or thousands of words.",
     ),
-
     # Asked and logged only in V1 (no catalog field to filter on yet)
     "latency_sensitivity": Score(
         instructions="How quickly does the answer need to come back?",
@@ -120,4 +118,4 @@ if __name__ == "__main__":
     ]
     for task in tasks:
         print(task)
-        print(judge_task(task)[0]['is_valid_task'])
+        print(judge_task(task)[0]["is_valid_task"])

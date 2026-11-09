@@ -95,3 +95,33 @@ Why we chose what we chose, and what we deferred. `ROADMAP.md` holds the plan; t
 **Why:** the pipeline result is useful for scripts, tests and logs. The API is a public contract. By Hyrum's Law, any field clients can observe gets depended on, and the field names (`needs_reasoning`, `min_context`, `tool_call`) mirror our internal catalog and judging logic. Adding a field later is a safe change and removing one breaks clients, so the API starts minimal and the `reason` text carries the explanation.
 
 **Revisit:** if clients need to see why the pool was narrowed, expose a trimmed summary of the requirement as an additive change.
+
+## Input gate: one yes/no question, threshold 0.7 (2026-11-09)
+
+**Decision:** Jev also answers `is_valid_task` (Noul). Below 0.7, the pipeline skips translate and rank and returns a fixed message with no recommendation. The call is still logged. A missing answer counts as invalid.
+
+**Why:** greetings and chit-chat have no task to match, and ranking them would return a model that looks like a real answer.
+
+**Evidence:** about 15 test inputs. Real tasks scored 0.86 or more, non-tasks 0.51 or less. Run-to-run noise is about 0.03.
+
+**Wording:** one claim only, with strict criteria. "What is the capital of Australia?" scored 0.78 until the `false` criteria excluded general-knowledge questions (then 0.21).
+
+**Note:** not a security control. An injection-style input still scored 0.88.
+
+## Call log: stdlib logging, own logger (2026-11-09)
+
+**Decision:** one JSON line per call goes to `logs/judgments.jsonl` through a dedicated logger, `recommender.calls` (see `call_log.py`). It is kept apart from the normal `getLogger(__name__)` loggers.
+
+**Why:** call records are data, not diagnostics, so they need their own file and format. A logging failure must never break a recommendation.
+
+**Note:** the record keys are a contract. Renaming one (we once wrote `judgements` for `judgments`) splits the log into two formats.
+
+**Deferred:** central `dictConfig`, log rotation.
+
+## Result shape is built only in `schemas.py` (2026-11-09)
+
+**Decision:** `create_ranking_output` in `recommender/schemas.py` is the only place the keys `recommendation`, `reason` and `ranked` are written. `rank.py` and `pipeline.py` both call it.
+
+**Why:** the shape was about to be written in three places. Now a rename is a one-line edit. Its parameters are keyword-only, so arguments can't be swapped by mistake.
+
+**Rejected:** `utils.py`, because catch-all modules collect unrelated code.

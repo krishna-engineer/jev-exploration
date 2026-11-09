@@ -2,8 +2,10 @@ from datetime import date
 from pathlib import Path
 import json
 
-# requirement key -> catalog field. 
-# 
+from recommender.schemas import create_ranking_output
+
+# requirement key -> catalog field.
+#
 # A boolean rule keeps models where the field is True.
 BOOLEAN_RULES = {
     "tool_call": "tool_call",
@@ -27,22 +29,22 @@ PRICE_OUT_WEIGHT = 1
 # Age used when release_date is missing (~10 years). Must exceed any real model's age so undated models lose ties.
 UNKNOWN_AGE_DAYS = 3650
 
+
 def get_age_in_days(release_date: str | None) -> int:
     if not release_date:
         return UNKNOWN_AGE_DAYS
     d = date.fromisoformat(release_date)
-    return (date.today() - d).days 
-
+    return (date.today() - d).days
 
 
 def filter_models(model_catalog: list[dict], requirement: dict) -> list[dict]:
-    model_type = requirement.get("model_type", "chat") # By default, chat (not embeddings or other) models are chosen
+    model_type = requirement.get("model_type", "chat")  # By default, chat (not embeddings or other) models are chosen
 
-    model_catalog_filtered = [m for m in model_catalog if m['price_in'] > 0 and m['price_out'] > 0]
-    model_catalog_filtered = [m for m in model_catalog_filtered if m['model_type'] == model_type]
-    
+    model_catalog_filtered = [m for m in model_catalog if m["price_in"] > 0 and m["price_out"] > 0]
+    model_catalog_filtered = [m for m in model_catalog_filtered if m["model_type"] == model_type]
+
     if requirement.get("vision", False) is True:
-        model_catalog_filtered = [m for m in model_catalog_filtered if "image" in m['input_modalities']]
+        model_catalog_filtered = [m for m in model_catalog_filtered if "image" in m["input_modalities"]]
 
     for requirement_key, field in BOOLEAN_RULES.items():
         if requirement.get(requirement_key):
@@ -65,21 +67,26 @@ def rank_models(model_catalog: list[dict], requirement: dict, num_models_to_retu
     price_sign = -1 if requirement.get("cost_preference", "") == "premium" else 1
 
     # Ascending sort: price (flipped for premium), then newest, then largest context.
-    model_catalog_ranked = sorted(model_catalog,
-                                  key=lambda m: (price_sign * (PRICE_IN_WEIGHT* m['price_in'] + PRICE_OUT_WEIGHT* m['price_out']),
-                                                 get_age_in_days(m['release_date']),
-                                                 -m['context']))
+    model_catalog_ranked = sorted(
+        model_catalog,
+        key=lambda m: (
+            price_sign * (PRICE_IN_WEIGHT * m["price_in"] + PRICE_OUT_WEIGHT * m["price_out"]),
+            get_age_in_days(m["release_date"]),
+            -m["context"],
+        ),
+    )
 
-
-    return model_catalog_ranked[0: num_models_to_return]
+    return model_catalog_ranked[0:num_models_to_return]
 
 
 def build_reason(model: dict, pool_size: int, cost_preference: str = "cheapest") -> str:
     is_premium = cost_preference == "premium"
     superlative = "Costliest" if is_premium else "Cheapest"
 
-    reason = (f"{superlative} of {pool_size} matching models: {model['name']} ({model['provider']}), "
-              f"${model['price_in']} in / ${model['price_out']} out per 1M tokens.")
+    reason = (
+        f"{superlative} of {pool_size} matching models: {model['name']} ({model['provider']}), "
+        f"${model['price_in']} in / ${model['price_out']} out per 1M tokens."
+    )
 
     if is_premium:
         reason += " Premium means highest price, not proven best quality."
@@ -91,18 +98,14 @@ def recommend_model(model_catalog: list[dict], requirement: dict) -> dict:
     model_catalog_filtered = filter_models(model_catalog, requirement)
 
     if not model_catalog_filtered:
-        return {"recommendation": None,
-                "reason": "No model meets these requirements.",
-                "ranked": []}
+        return create_ranking_output(recommendation=None, reason="No model meets these requirements.", ranked=[])
 
     ranked = rank_models(model_catalog_filtered, requirement)
     cost_preference = requirement.get("cost_preference", "cheapest")
 
     reason = build_reason(ranked[0], len(model_catalog_filtered), cost_preference)
 
-    return {"recommendation": ranked[0],
-            "reason": reason,
-            "ranked": ranked}
+    return create_ranking_output(recommendation=ranked[0], reason=reason, ranked=ranked)
 
 
 if __name__ == "__main__":
