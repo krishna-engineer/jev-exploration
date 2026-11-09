@@ -104,7 +104,7 @@ Why we chose what we chose, and what we deferred. `ROADMAP.md` holds the plan; t
 
 **Evidence:** about 15 test inputs. Real tasks scored 0.86 or more, non-tasks 0.51 or less. Run-to-run noise is about 0.03.
 
-**Wording:** one claim only, with strict criteria. "What is the capital of Australia?" scored 0.78 until the `false` criteria excluded general-knowledge questions (then 0.21).
+**Wording:** one claim only, with strict criteria. The instructions for this and the other Jev questions are a first version and will likely need changes. Let the eval set drive them, not single cases.
 
 **Note:** not a security control. An injection-style input still scored 0.88.
 

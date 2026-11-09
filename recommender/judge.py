@@ -11,13 +11,41 @@ JEV_MODEL = os.getenv("JEV_MODEL", "jev-latest")
 # Score levels are situations, not degrees, and are ordered low to high.
 QUESTIONS = {
     # Used to build the requirement dict
+    # "is_valid_task": Noul(
+    #     instructions="The text describes a task that a user wants an AI model to perform.",
+    #     criteria=NoulCriteria(
+    #         true="A concrete task which can be performed by AI model, like summarizing a doc, classifying "
+    #         "text or code writing, etc.",
+    #         # false="A greeting, small talk, unrelated questions, etc."
+    #         false="A greeting, small talk, unrelated questions, a general-knowledge question for the assistant to answer, etc.",
+    #     ),
+    # ),
     "is_valid_task": Noul(
-        instructions="The text describes a task that a user wants an AI model to perform.",
+        instructions="The text is about getting a specific job done with an AI model.",
         criteria=NoulCriteria(
-            true="A concrete task which can be performed by AI model, like summarizing a doc, classifying"
-            "text or code writing, etc.",
-            # false="A greeting, small talk, unrelated questions, etc."
-            false="A greeting, small talk, unrelated questions, a general-knowledge question for the assistant to answer, etc.",
+            true=(
+                "A concrete job for an AI model, or a request to pick a model for one: summarizing documents, "
+                "classifying text, writing code, transcribing audio, or choosing the best model for a feature in an app."
+            ),
+            false=(
+                "A greeting, small talk, a question about the assistant itself, a general-knowledge question, "
+                "or a request with no identifiable job, such as asking which model is best in general."
+            ),
+        ),
+    ),
+    "is_supported_task": Noul(
+        instructions="The task can be done by an AI model that reads text, and optionally images, audio, video or PDFs, "
+        "and responds in text or by calling tools.",
+        criteria=NoulCriteria(
+            true=(
+                "Work where the answer is text: summarizing, writing, coding, analysis, answering questions, "
+                "transcribing audio, describing an image, video or document, or carrying out multi-step work "
+                "by calling tools."
+            ),
+            false=(
+                "Work where the output is not text: generating images or video, turning text into speech, "
+                "live voice conversation, or training a model."
+            ),
         ),
     ),
     "reasoning_difficulty": Score(
@@ -101,7 +129,10 @@ if __name__ == "__main__":
     tasks = [
         "Write a Python function that parses a CSV file and returns the rows as dictionaries.",
         "Hello, who built you?",
+        "If 2+2=5, what is 3+2?",
         "thanks!",
+        "I have a video of around 60 minutes . I want to know which image exists in between the video at the frame which exists just in the middle of the video.",
+        "I want to implement speech to text feature in my application which model would be giving the best accuracy. ",
         "help me with my data",
         "I need an AI",
         "Which model is best?",
@@ -115,7 +146,10 @@ if __name__ == "__main__":
         "Act as a travel agent: search flights, compare hotel prices through the booking API, and book the best option.",
         "Write a 5,000-word long-form report on renewable energy trends from these 40 research papers.",
         "Live voice assistant that must reply to the caller in under a second.",
+        "Generate a logo image of a fox for my startup.",
+        "Fine-tune a model on my company's support tickets.",
+        "Create a 10-second video of a cat surfing.",
     ]
     for task in tasks:
         print(task)
-        print(judge_task(task)[0]["is_valid_task"])
+        print(judge_task(task)[0]["is_supported_task"])
